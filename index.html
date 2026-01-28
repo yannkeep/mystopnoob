@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ateliers Territoriaux — Maillage Citoyen</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #fafafa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f0f0f0;
+            --text-primary: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --text-muted: #8a8a8a;
+            --accent-stib: #003b7a;
+            --accent-tec: #e30613;
+            --accent-success: #059669;
+            --accent-warning: #d97706;
+            --accent-info: #0284c7;
+            --border: #e5e5e5;
+            --shadow: rgba(0, 0, 0, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+        }
+
+        @media (max-width: 900px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 50vh auto;
+            }
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-title .icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-stib), var(--accent-tec));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 600;
+            color: var(--accent-info);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Data Sources */
+        .data-source {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .data-source:last-child {
+            margin-bottom: 0;
+        }
+
+        .source-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .source-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.7rem;
+            color: white;
+        }
+
+        .source-logo.stib { background: var(--accent-stib); }
+        .source-logo.tec { background: var(--accent-tec); }
+
+        .source-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .source-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .source-status {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .source-status.loading {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .source-status.loaded {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .source-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Filters */
+        .filter-group {
+            margin-bottom: 1rem;
+        }
+
+        .filter-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .filter-options {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            font-family: inherit;
+            font-size: 0.8rem;
+            padding: 0.4rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent-info);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-info);
+            color: white;
+            border-color: var(--accent-info);
+        }
+
+        /* Spot Claim Section */
+        .claim-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .selected-stop {
+            background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .selected-stop.empty {
+            background: var(--bg-tertiary);
+            border: 1px dashed var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2rem 1rem;
+        }
+
+        .stop-name {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .stop-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .stop-coords {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            font-family: inherit;
+            font-size: 0.9rem;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-info);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea.form-input {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-info);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0369a1;
+        }
+
+        .btn-primary:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        /* Workshops List */
+        .workshops-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .workshop-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .workshop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .workshop-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .workshop-status {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .workshop-status.recruiting {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .workshop-status.ready {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .workshop-status.active {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .workshop-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .workshop-participants {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .participant-dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .participant-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+        }
+
+        .participant-dot.filled {
+            background: var(--accent-success);
+        }
+
+        /* Map Container */
+        .map-container {
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .map-control-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 2px 4px var(--shadow);
+            transition: all 0.2s;
+        }
+
+        .map-control-btn:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .map-control-btn.active {
+            background: var(--accent-info);
+            color: white;
+            border-color: var(--accent-info);
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 2rem;
+            left: 1rem;
+            z-index: 1000;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 0.75rem;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(250, 250, 250, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-info);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            padding: 1rem;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-body {
+            padding: 1.25rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        /* Info box */
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: #1e40af;
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            font-family: inherit;
+            font-size: 0.85rem;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--accent-info);
+            border-bottom-color: var(--accent-info);
+        }
+
+        /* Leaflet custom styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+        }
+
+        .custom-popup {
+            font-family: 'IBM Plex Sans', sans-serif;
+        }
+
+        .custom-popup h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .custom-popup p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .custom-popup .btn {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-title">
+                <div class="icon">🗺️</div>
+                <div>
+                    <div>Ateliers Territoriaux</div>
+                    <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-muted);">Maillage citoyen basé sur l'Open Data</div>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="total-stops">—</span>
+                    <span class="stat-label">arrêts chargés</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="claimed-spots">0</span>
+                    <span class="stat-label">spots réclamés</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="active-workshops">0</span>
+                    <span class="stat-label">ateliers actifs</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Data Sources -->
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <span>📊</span> Sources Open Data
+                </div>
+                <div class="data-source">
+                    <div class="source-info">
+                        <div class="source-logo stib">STIB</div>
+                        <div>
+                            <div class="source-name">STIB-MIVB</div>
+                            <div class="source-count" id="stib-count">Chargement...</div>
+                        </div>
+                    </div>
+                    <span class="source-status loading" id="stib-status">Chargement</span>
+                </div>
+                <div class="data-source">
+                    <div class="source-info">
+                        <div class="source-logo tec">TEC</div>
+                        <div>
+                            <div class="source-name">TEC Wallonie</div>
+                            <div class="source-count" id="tec-count">Chargement...</div>
+                        </div>
+                    </div>
+                    <span class="source-status loading" id="tec-status">Chargement</span>
+                </div>
+                <div style="margin-top: 0.75rem; font-size: 0.7rem; color: var(--text-muted);">
+                    <strong>APIs utilisées :</strong><br>
+                    • data.stib-mivb.brussels (GTFS)<br>
+                    • transportdata.be (GTFS TEC)
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <span>🔍</span> Filtres
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Réseau</label>
+                    <div class="filter-options">
+                        <button class="filter-btn active" data-filter="all">Tous</button>
+                        <button class="filter-btn" data-filter="stib">STIB</button>
+                        <button class="filter-btn" data-filter="tec">TEC</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Affichage</label>
+                    <div class="filter-options">
+                        <button class="filter-btn active" data-display="stops">Arrêts</button>
+                        <button class="filter-btn" data-display="voronoi">Territoires</button>
+                        <button class="filter-btn" data-display="claimed">Réclamés</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected Stop / Claim -->
+            <div class="sidebar-section claim-section">
+                <div class="section-title">
+                    <span>📍</span> Réclamer un Spot
+                </div>
+                
+                <div class="selected-stop empty" id="selected-stop">
+                    Cliquez sur un arrêt sur la carte pour le sélectionner et réclamer votre spot territorial.
+                </div>
+
+                <div id="claim-form" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Votre nom / pseudo</label>
+                        <input type="text" class="form-input" id="claim-name" placeholder="Ex: Marie_BXL">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Lien de votre trace (publication)</label>
+                        <input type="url" class="form-input" id="claim-url" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Thématique de l'atelier</label>
+                        <select class="form-input" id="claim-theme">
+                            <option value="">Choisir une thématique...</option>
+                            <option value="mobilite">Mobilité durable</option>
+                            <option value="environnement">Environnement & Climat</option>
+                            <option value="social">Cohésion sociale</option>
+                            <option value="numerique">Transition numérique</option>
+                            <option value="culture">Culture & Patrimoine</option>
+                            <option value="economie">Économie locale</option>
+                            <option value="autre">Autre</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description courte</label>
+                        <textarea class="form-input" id="claim-description" placeholder="Décrivez brièvement votre projet d'atelier..."></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="submit-claim">
+                        🚀 Réclamer ce spot
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workshops Tabs -->
+            <div class="sidebar-section">
+                <div class="tabs">
+                    <button class="tab active" data-tab="my-workshops">Mes ateliers</button>
+                    <button class="tab" data-tab="nearby">À proximité</button>
+                    <button class="tab" data-tab="matches">Matches</button>
+                </div>
+                
+                <div class="workshops-list" id="workshops-list">
+                    <div class="info-box">
+                        <div class="info-box-title">Comment ça marche ?</div>
+                        <ol style="margin-left: 1rem; margin-top: 0.5rem;">
+                            <li>Réclamez un arrêt comme spot</li>
+                            <li>Publiez une trace sur une plateforme</li>
+                            <li>Recrutez 5-9 participants</li>
+                            <li>Atelier distanciel asynchrone</li>
+                            <li>Match pour atelier présentiel</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Map -->
+        <main class="map-container">
+            <div id="map"></div>
+            
+            <div class="map-controls">
+                <button class="map-control-btn" id="btn-voronoi" title="Afficher les territoires Voronoï">◇</button>
+                <button class="map-control-btn" id="btn-clusters" title="Regrouper les arrêts">●</button>
+                <button class="map-control-btn" id="btn-locate" title="Ma position">◎</button>
+            </div>
+
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-stib);"></div>
+                    <span>STIB (Bruxelles)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-tec);"></div>
+                    <span>TEC (Wallonie)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-success);"></div>
+                    <span>Spot réclamé</span>
+                </div>
+            </div>
+
+            <div class="loading-overlay" id="loading">
+                <div class="spinner"></div>
+                <div class="loading-text">Chargement des données Open Data...</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Claim Success Modal -->
+    <div class="modal-overlay hidden" id="modal-success">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">🎉 Spot réclamé avec succès !</div>
+                <button class="modal-close" onclick="closeModal('modal-success')">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem;">Votre spot territorial a été enregistré. Voici les prochaines étapes :</p>
+                <div class="info-box">
+                    <strong>1. Publiez votre trace</strong><br>
+                    Partagez votre lien sur les réseaux pour attirer des participants.
+                </div>
+                <div class="info-box" style="background: #f0fdf4; border-color: #86efac; color: #166534;">
+                    <strong>2. Recrutez 5-9 participants</strong><br>
+                    Une fois le quorum atteint, l'atelier distanciel peut commencer.
+                </div>
+                <div class="info-box" style="background: #fef3c7; border-color: #fcd34d; color: #92400e;">
+                    <strong>3. Matching territorial</strong><br>
+                    Le système trouvera des ateliers voisins pour des rencontres présentielles.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal('modal-success')">Compris !</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workshop Detail Modal -->
+    <div class="modal-overlay hidden" id="modal-workshop">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="workshop-modal-title">Détails de l'atelier</div>
+                <button class="modal-close" onclick="closeModal('modal-workshop')">×</button>
+            </div>
+            <div class="modal-body" id="workshop-modal-body">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('modal-workshop')">Fermer</button>
+                <button class="btn btn-primary" id="join-workshop-btn">Rejoindre l'atelier</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    
+    <script>
+    (function() {
+        'use strict';
+
+        // ═══════════════════════════════════════════════════════════════════
+        // CONFIGURATION
+        // ═══════════════════════════════════════════════════════════════════
+        
+        const CONFIG = {
+            // API Endpoints (Real Open Data)
+            STIB_API: 'https://data.stib-mivb.brussels/api/explore/v2.1/catalog/datasets/gtfs-stops-production/records',
+            TEC_SAMPLE_URL: 'https://transportdata.be/fr/dataset/tec-gtfs', // Info page
+            
+            // Map defaults (centered on Brussels)
+            DEFAULT_CENTER: [50.8503, 4.3517],
+            DEFAULT_ZOOM: 12,
+            
+            // Limits
+            STIB_LIMIT: 100, // Limit for demo (API allows more)
+            MIN_PARTICIPANTS: 5,
+            MAX_PARTICIPANTS: 9
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // STATE
+        // ═══════════════════════════════════════════════════════════════════
+        
+        const state = {
+            map: null,
+            stops: {
+                stib: [],
+                tec: []
+            },
+            markers: {
+                stib: [],
+                tec: []
+            },
+            layers: {
+                stib: null,
+                tec: null,
+                voronoi: null,
+                claimed: null
+            },
+            selectedStop: null,
+            claimedSpots: JSON.parse(localStorage.getItem('claimedSpots') || '[]'),
+            workshops: JSON.parse(localStorage.getItem('workshops') || '[]'),
+            filters: {
+                network: 'all',
+                display: 'stops'
+            }
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // INITIALIZE MAP
+        // ═══════════════════════════════════════════════════════════════════
+        
+        function initMap() {
+            state.map = L.map('map', {
+                center: CONFIG.DEFAULT_CENTER,
+                zoom: CONFIG.DEFAULT_ZOOM,
+                zoomControl: true
+            });
+
+            // Base layer - CartoDB Positron (clean, minimal)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(state.map);
+
+            // Initialize layer groups
+            state.layers.stib = L.layerGroup().addTo(state.map);
+            state.layers.tec = L.layerGroup().addTo(state.map);
+            state.layers.voronoi = L.layerGroup();
+            state.layers.claimed = L.layerGroup().addTo(state.map);
+
+            // Load data
+            loadAllData();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // LOAD DATA FROM OPEN DATA APIS
+        // ═══════════════════════════════════════════════════════════════════
+        
+        async function loadAllData() {
+            showLoading(true);
+            
+            try {
+                // Load STIB data (real API)
+                await loadSTIBData();
+                
+                // Load TEC data (sample - real API requires GTFS parsing)
+                loadTECSampleData();
+                
+                // Render markers
+                renderMarkers();
+                
+                // Render claimed spots
+                renderClaimedSpots();
+                
+                // Update stats
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadSTIBData() {
+            const statusEl = document.getElementById('stib-status');
+            const countEl = document.getElementById('stib-count');
+            
+            try {
+                // Real STIB API call
+                const response = await fetch(
+                    `${CONFIG.STIB_API}?limit=${CONFIG.STIB_LIMIT}&select=stop_id,stop_name,stop_lat,stop_lon`
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Transform data
+                state.stops.stib = data.results.map(record => ({
+                    id: record.stop_id,
+                    name: record.stop_name,
+                    lat: record.stop_lat,
+                    lon: record.stop_lon,
+                    network: 'stib'
+                }));
+                
+                statusEl.textContent = 'Chargé';
+                statusEl.className = 'source-status loaded';
+                countEl.textContent = `${state.stops.stib.length} arrêts`;
+                
+            } catch (error) {
+                console.error('STIB API error:', error);
+                
+                // Fallback to sample data
+                loadSTIBSampleData();
+                
+                statusEl.textContent = 'Fallback';
+                statusEl.className = 'source-status loaded';
+            }
+        }
+
+        function loadSTIBSampleData() {
+            // Real STIB stops (sample subset for demo)
+            state.stops.stib = [
+                { id: 'STIB_8122', name: 'Gare Centrale', lat: 50.8456, lon: 4.3572, network: 'stib' },
+                { id: 'STIB_8032', name: 'De Brouckère', lat: 50.8514, lon: 4.3533, network: 'stib' },
+                { id: 'STIB_8012', name: 'Rogier', lat: 50.8563, lon: 4.3496, network: 'stib' },
+                { id: 'STIB_8022', name: 'Bourse', lat: 50.8487, lon: 4.3485, network: 'stib' },
+                { id: 'STIB_8132', name: 'Arts-Loi', lat: 50.8455, lon: 4.3696, network: 'stib' },
+                { id: 'STIB_8161', name: 'Schuman', lat: 50.8410, lon: 4.3830, network: 'stib' },
+                { id: 'STIB_8171', name: 'Mérode', lat: 50.8400, lon: 4.3970, network: 'stib' },
+                { id: 'STIB_8231', name: 'Montgomery', lat: 50.8385, lon: 4.4090, network: 'stib' },
+                { id: 'STIB_8042', name: 'Gare du Nord', lat: 50.8598, lon: 4.3609, network: 'stib' },
+                { id: 'STIB_8082', name: 'Gare du Midi', lat: 50.8359, lon: 4.3364, network: 'stib' },
+                { id: 'STIB_5310', name: 'ULB', lat: 50.8122, lon: 4.3821, network: 'stib' },
+                { id: 'STIB_5320', name: 'VUB', lat: 50.8204, lon: 4.3957, network: 'stib' },
+                { id: 'STIB_1410', name: 'Flagey', lat: 50.8274, lon: 4.3720, network: 'stib' },
+                { id: 'STIB_1310', name: 'Louise', lat: 50.8329, lon: 4.3575, network: 'stib' },
+                { id: 'STIB_1210', name: 'Porte de Namur', lat: 50.8378, lon: 4.3643, network: 'stib' },
+                { id: 'STIB_2110', name: 'Stockel', lat: 50.8325, lon: 4.4803, network: 'stib' },
+                { id: 'STIB_2210', name: 'Tomberg', lat: 50.8446, lon: 4.4495, network: 'stib' },
+                { id: 'STIB_3110', name: 'Simonis', lat: 50.8656, lon: 4.3277, network: 'stib' },
+                { id: 'STIB_3210', name: 'Beekkant', lat: 50.8614, lon: 4.3168, network: 'stib' },
+                { id: 'STIB_4110', name: 'Heysel', lat: 50.8948, lon: 4.3346, network: 'stib' }
+            ];
+            
+            document.getElementById('stib-count').textContent = `${state.stops.stib.length} arrêts (sample)`;
+        }
+
+        function loadTECSampleData() {
+            // TEC requires GTFS file parsing - using sample data
+            // Real source: http://opendata.tec-wl.be/Current%20GTFS/
+            
+            state.stops.tec = [
+                { id: 'TEC_NAM01', name: 'Namur Gare', lat: 50.4669, lon: 4.8620, network: 'tec' },
+                { id: 'TEC_NAM02', name: 'Namur Place St-Aubain', lat: 50.4636, lon: 4.8679, network: 'tec' },
+                { id: 'TEC_LIE01', name: 'Liège Guillemins', lat: 50.6243, lon: 5.5666, network: 'tec' },
+                { id: 'TEC_LIE02', name: 'Liège Place St-Lambert', lat: 50.6452, lon: 5.5735, network: 'tec' },
+                { id: 'TEC_CHA01', name: 'Charleroi Sud', lat: 50.4081, lon: 4.4390, network: 'tec' },
+                { id: 'TEC_CHA02', name: 'Charleroi Ville Haute', lat: 50.4120, lon: 4.4445, network: 'tec' },
+                { id: 'TEC_MON01', name: 'Mons Gare', lat: 50.4542, lon: 3.9564, network: 'tec' },
+                { id: 'TEC_MON02', name: 'Mons Grand Place', lat: 50.4531, lon: 3.9519, network: 'tec' },
+                { id: 'TEC_VER01', name: 'Verviers Central', lat: 50.5887, lon: 5.8660, network: 'tec' },
+                { id: 'TEC_WAV01', name: 'Wavre Centre', lat: 50.7175, lon: 4.6038, network: 'tec' },
+                { id: 'TEC_OTT01', name: 'Ottignies Gare', lat: 50.6656, lon: 4.5700, network: 'tec' },
+                { id: 'TEC_LLN01', name: 'Louvain-la-Neuve Gare', lat: 50.6696, lon: 4.6157, network: 'tec' },
+                { id: 'TEC_NIV01', name: 'Nivelles Gare', lat: 50.5976, lon: 4.3282, network: 'tec' },
+                { id: 'TEC_WAT01', name: 'Waterloo Gare', lat: 50.7137, lon: 4.3991, network: 'tec' },
+                { id: 'TEC_BRA01', name: 'Braine-l\'Alleud Centre', lat: 50.6837, lon: 4.3705, network: 'tec' }
+            ];
+            
+            const statusEl = document.getElementById('tec-status');
+            const countEl = document.getElementById('tec-count');
+            
+            statusEl.textContent = 'Sample';
+            statusEl.className = 'source-status loaded';
+            countEl.textContent = `${state.stops.tec.length} arrêts (sample)`;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // RENDER MARKERS
+        // ═══════════════════════════════════════════════════════════════════
+        
+        function renderMarkers() {
+            // Clear existing
+            state.layers.stib.clearLayers();
+            state.layers.tec.clearLayers();
+            state.markers.stib = [];
+            state.markers.tec = [];
+
+            // STIB markers
+            if (state.filters.network === 'all' || state.filters.network === 'stib') {
+                state.stops.stib.forEach(stop => {
+                    const marker = createStopMarker(stop, 'stib');
+                    marker.addTo(state.layers.stib);
+                    state.markers.stib.push(marker);
+                });
+            }
+
+            // TEC markers
+            if (state.filters.network === 'all' || state.filters.network === 'tec') {
+                state.stops.tec.forEach(stop => {
+                    const marker = createStopMarker(stop, 'tec');
+                    marker.addTo(state.layers.tec);
+                    state.markers.tec.push(marker);
+                });
+            }
+        }
+
+        function createStopMarker(stop, network) {
+            const isClaimed = state.claimedSpots.some(s => s.stopId === stop.id);
+            
+            const color = isClaimed ? '#059669' : (network === 'stib' ? '#003b7a' : '#e30613');
+            
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    width: 12px;
+                    height: 12px;
+                    background: ${color};
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                "></div>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            });
+
+            const marker = L.marker([stop.lat, stop.lon], { icon });
+            
+            marker.bindPopup(`
+                <div class="custom-popup">
+                    <h4>${stop.name}</h4>
+                    <p><strong>${network.toUpperCase()}</strong> • ${stop.id}</p>
+                    <p style="font-family: monospace; font-size: 0.7rem;">
+                        ${stop.lat.toFixed(5)}, ${stop.lon.toFixed(5)}
+                    </p>
+                    ${isClaimed ? 
+                        '<p style="color: #059669; font-weight: 500;">✓ Spot réclamé</p>' : 
+                        `<button class="btn btn-primary" onclick="selectStop('${stop.id}', '${network}')">
+                            Sélectionner ce spot
+                        </button>`
+                    }
+                </div>
+            `);
+
+            return marker;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // VORONOI TERRITORIES
+        // ═══════════════════════════════════════════════════════════════════
+        
+        function renderVoronoi() {
+            state.layers.voronoi.clearLayers();
+            
+            // Combine all stops
+            const allStops = [...state.stops.stib, ...state.stops.tec];
+            
+            if (allStops.length < 3) return;
+
+            // Create points for Turf.js
+            const points = turf.featureCollection(
+                allStops.map(stop => turf.point([stop.lon, stop.lat], { 
+                    id: stop.id, 
+                    name: stop.name,
+                    network: stop.network 
+                }))
+            );
+
+            // Bounding box (Belgium roughly)
+            const bbox = [2.5, 49.5, 6.5, 51.5];
+
+            try {
+                // Generate Voronoi polygons
+                const voronoi = turf.voronoi(points, { bbox });
+                
+                if (voronoi) {
+                    voronoi.features.forEach((feature, index) => {
+                        if (feature && feature.geometry) {
+                            const stop = allStops[index];
+                            const isClaimed = state.claimedSpots.some(s => s.stopId === stop.id);
+                            
+                            const polygon = L.geoJSON(feature, {
+                                style: {
+                                    color: isClaimed ? '#059669' : (stop.network === 'stib' ? '#003b7a' : '#e30613'),
+                                    weight: 1,
+                                    opacity: 0.6,
+                                    fillOpacity: isClaimed ? 0.2 : 0.05
+                                }
+                            });
+                            
+                            polygon.bindPopup(`
+                                <div class="custom-popup">
+                                    <h4>Territoire: ${stop.name}</h4>
+                                    <p>${stop.network.toUpperCase()}</p>
+                                    ${isClaimed ? '<p style="color: #059669;">✓ Territoire réclamé</p>' : ''}
+                                </div>
+                            `);
+                            
+                            polygon.addTo(state.layers.voronoi);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('Voronoi error:', e);
+            }
+        }
+
+        function toggleVoronoi() {
+            const btn = document.getElementById('btn-voronoi');
+            
+            if (state.map.hasLayer(state.layers.voronoi)) {
+                state.map.removeLayer(state.layers.voronoi);
+                btn.classList.remove('active');
+            } else {
+                renderVoronoi();
+                state.map.addLayer(state.layers.voronoi);
+                btn.classList.add('active');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SPOT CLAIMING
+        // ═══════════════════════════════════════════════════════════════════
+        
+        window.selectStop = function(stopId, network) {
+            const stops = network === 'stib' ? state.stops.stib : state.stops.tec;
+            const stop = stops.find(s => s.id === stopId);
+            
+            if (!stop) return;
+            
+            state.selectedStop = stop;
+            
+            // Update UI
+            const container = document.getElementById('selected-stop');
+            container.className = 'selected-stop';
+            container.innerHTML = `
+                <div class="stop-name">${stop.name}</div>
+                <div class="stop-meta">
+                    <span>${network.toUpperCase()}</span>
+                    <span>ID: ${stop.id}</span>
+                </div>
+                <div class="stop-coords">${stop.lat.toFixed(5)}, ${stop.lon.toFixed(5)}</div>
+            `;
+            
+            document.getElementById('claim-form').style.display = 'block';
+            
+            // Close popup and center map
+            state.map.closePopup();
+            state.map.setView([stop.lat, stop.lon], 15);
+        };
+
+        function submitClaim() {
+            if (!state.selectedStop) return;
+            
+            const name = document.getElementById('claim-name').value.trim();
+            const url = document.getElementById('claim-url').value.trim();
+            const theme = document.getElementById('claim-theme').value;
+            const description = document.getElementById('claim-description').value.trim();
+            
+            if (!name || !theme) {
+                alert('Veuillez remplir au moins votre nom et la thématique.');
+                return;
+            }
+            
+            // Create claim
+            const claim = {
+                id: 'claim_' + Date.now(),
+                stopId: state.selectedStop.id,
+                stopName: state.selectedStop.name,
+                network: state.selectedStop.network,
+                lat: state.selectedStop.lat,
+                lon: state.selectedStop.lon,
+                claimant: name,
+                traceUrl: url,
+                theme: theme,
+                description: description,
+                createdAt: new Date().toISOString(),
+                participants: [{ name: name, joinedAt: new Date().toISOString() }],
+                status: 'recruiting' // recruiting, ready, active
+            };
+            
+            // Save
+            state.claimedSpots.push(claim);
+            localStorage.setItem('claimedSpots', JSON.stringify(state.claimedSpots));
+            
+            // Also create as workshop
+            state.workshops.push(claim);
+            localStorage.setItem('workshops', JSON.stringify(state.workshops));
+            
+            // Reset form
+            document.getElementById('claim-name').value = '';
+            document.getElementById('claim-url').value = '';
+            document.getElementById('claim-theme').value = '';
+            document.getElementById('claim-description').value = '';
+            document.getElementById('claim-form').style.display = 'none';
+            document.getElementById('selected-stop').className = 'selected-stop empty';
+            document.getElementById('selected-stop').innerHTML = 'Cliquez sur un arrêt sur la carte pour le sélectionner et réclamer votre spot territorial.';
+            
+            state.selectedStop = null;
+            
+            // Refresh
+            renderMarkers();
+            renderClaimedSpots();
+            renderWorkshops();
+            updateStats();
+            
+            // Show success modal
+            document.getElementById('modal-success').classList.remove('hidden');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // RENDER CLAIMED SPOTS
+        // ═══════════════════════════════════════════════════════════════════
+        
+        function renderClaimedSpots() {
+            state.layers.claimed.clearLayers();
+            
+            state.claimedSpots.forEach(spot => {
+                const icon = L.divIcon({
+                    className: 'claimed-marker',
+                    html: `<div style="
+                        width: 20px;
+                        height: 20px;
+                        background: #059669;
+                        border: 3px solid white;
+                        border-radius: 50%;
+                        box-shadow: 0 2px 8px rgba(5, 150, 105, 0.4);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        font-size: 10px;
+                        font-weight: bold;
+                    ">${spot.participants.length}</div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                
+                const marker = L.marker([spot.lat, spot.lon], { icon });
+                
+                marker.bindPopup(`
+                    <div class="custom-popup">
+                        <h4>${spot.stopName}</h4>
+                        <p><strong>Thème:</strong> ${getThemeLabel(spot.theme)}</p>
+                        <p><strong>Animateur:</strong> ${spot.claimant}</p>
+                        <p><strong>Participants:</strong> ${spot.participants.length}/${CONFIG.MAX_PARTICIPANTS}</p>
+                        ${spot.traceUrl ? `<p><a href="${spot.traceUrl}" target="_blank">Voir la trace →</a></p>` : ''}
+                        <button class="btn btn-primary" onclick="showWorkshopDetail('${spot.id}')">
+                            Voir les détails
+                        </button>
+                    </div>
+                `);
+                
+                marker.addTo(state.layers.claimed);
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // WORKSHOPS & MATCHING
+        // ═══════════════════════════════════════════════════════════════════
+        
+        function renderWorkshops() {
+            const container = document.getElementById('workshops-list');
+            
+            if (state.workshops.length === 0) {
+                container.innerHTML = `
+                    <div class="info-box">
+                        <div class="info-box-title">Comment ça marche ?</div>
+                        <ol style="margin-left: 1rem; margin-top: 0.5rem;">
+                            <li>Réclamez un arrêt comme spot</li>
+                            <li>Publiez une trace sur une plateforme</li>
+                            <li>Recrutez 5-9 participants</li>
+                            <li>Atelier distanciel asynchrone</li>
+                            <li>Match pour atelier présentiel</li>
+                        </ol>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = state.workshops.map(workshop => `
+                <div class="workshop-card" onclick="showWorkshopDetail('${workshop.id}')">
+                    <div class="workshop-header">
+                        <div class="workshop-title">${workshop.stopName}</div>
+                        <span class="workshop-status ${workshop.status}">${getStatusLabel(workshop.status)}</span>
+                    </div>
+                    <div class="workshop-meta">${getThemeLabel(workshop.theme)}</div>
+                    <div class="workshop-participants">
+                        <div class="participant-dots">
+                            ${Array(CONFIG.MAX_PARTICIPANTS).fill(0).map((_, i) => 
+                                `<div class="participant-dot ${i < workshop.participants.length ? 'filled' : ''}"></div>`
+                            ).join('')}
+                        </div>
+                        <span>${workshop.participants.length}/${CONFIG.MAX_PARTICIPANTS} participants</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.showWorkshopDetail = function(workshopId) {
+            const workshop = state.workshops.find(w => w.id === workshopId);
+            if (!workshop) return;
+            
+            document.getElementById('workshop-modal-title').textContent = workshop.stopName;
+            document.getElementById('workshop-modal-body').innerHTML = `
+                <div class="info-box">
+                    <strong>Thématique:</strong> ${getThemeLabel(workshop.theme)}<br>
+                    <strong>Réseau:</strong> ${workshop.network.toUpperCase()}<br>
+                    <strong>Statut:</strong> ${getStatusLabel(workshop.status)}
+                </div>
+                
+                ${workshop.description ? `<p style="margin-bottom: 1rem;">${workshop.description}</p>` : ''}
+                
+                ${workshop.traceUrl ? `
+                    <p style="margin-bottom: 1rem;">
+                        <a href="${workshop.traceUrl}" target="_blank" style="color: var(--accent-info);">
+                            🔗 Voir la trace publiée →
+                        </a>
+                    </p>
+                ` : ''}
+                
+                <h4 style="margin-bottom: 0.5rem;">Participants (${workshop.participants.length}/${CONFIG.MAX_PARTICIPANTS})</h4>
+                <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                    ${workshop.participants.map(p => `<li>${p.name}</li>`).join('')}
+                </ul>
+                
+                ${workshop.participants.length >= CONFIG.MIN_PARTICIPANTS ? `
+                    <div class="info-box" style="background: #d1fae5; border-color: #86efac; color: #065f46;">
+                        <strong>✓ Quorum atteint !</strong><br>
+                        L'atelier distanciel peut commencer. Le système recherche des ateliers voisins pour un match présentiel.
+                    </div>
+                ` : `
+                    <div class="info-box" style="background: #fef3c7; border-color: #fcd34d; color: #92400e;">
+                        <strong>En recrutement</strong><br>
+                        Encore ${CONFIG.MIN_PARTICIPANTS - workshop.participants.length} participant(s) nécessaire(s) pour atteindre le quorum.
+                    </div>
+                `}
+            `;
+            
+            document.getElementById('modal-workshop').classList.remove('hidden');
+        };
+
+        function findMatches(workshop) {
+            // Find workshops within ~5km that have reached quorum
+            const matches = state.workshops.filter(w => {
+                if (w.id === workshop.id) return false;
+                if (w.participants.length < CONFIG.MIN_PARTICIPANTS) return false;
+                
+                const distance = turf.distance(
+                    turf.point([workshop.lon, workshop.lat]),
+                    turf.point([w.lon, w.lat]),
+                    { units: 'kilometers' }
+                );
+                
+                return distance <= 5;
+            });
+            
+            return matches;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // UTILITIES
+        // ═══════════════════════════════════════════════════════════════════
+        
+        function getThemeLabel(theme) {
+            const labels = {
+                'mobilite': 'Mobilité durable',
+                'environnement': 'Environnement & Climat',
+                'social': 'Cohésion sociale',
+                'numerique': 'Transition numérique',
+                'culture': 'Culture & Patrimoine',
+                'economie': 'Économie locale',
+                'autre': 'Autre'
+            };
+            return labels[theme] || theme;
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'recruiting': 'Recrutement',
+                'ready': 'Prêt',
+                'active': 'Actif'
+            };
+            return labels[status] || status;
+        }
+
+        function updateStats() {
+            const totalStops = state.stops.stib.length + state.stops.tec.length;
+            document.getElementById('total-stops').textContent = totalStops;
+            document.getElementById('claimed-spots').textContent = state.claimedSpots.length;
+            document.getElementById('active-workshops').textContent = 
+                state.workshops.filter(w => w.participants.length >= CONFIG.MIN_PARTICIPANTS).length;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('hidden', !show);
+        }
+
+        window.closeModal = function(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // EVENT LISTENERS
+        // ═══════════════════════════════════════════════════════════════════
+        
+        function setupEventListeners() {
+            // Submit claim
+            document.getElementById('submit-claim').addEventListener('click', submitClaim);
+            
+            // Voronoi toggle
+            document.getElementById('btn-voronoi').addEventListener('click', toggleVoronoi);
+            
+            // Locate me
+            document.getElementById('btn-locate').addEventListener('click', function() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(pos) {
+                        state.map.setView([pos.coords.latitude, pos.coords.longitude], 15);
+                    });
+                }
+            });
+            
+            // Filter buttons
+            document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    state.filters.network = this.dataset.filter;
+                    renderMarkers();
+                });
+            });
+            
+            // Display buttons
+            document.querySelectorAll('.filter-btn[data-display]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn[data-display]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    state.filters.display = this.dataset.display;
+                    
+                    if (this.dataset.display === 'voronoi') {
+                        renderVoronoi();
+                        state.map.addLayer(state.layers.voronoi);
+                        document.getElementById('btn-voronoi').classList.add('active');
+                    } else {
+                        state.map.removeLayer(state.layers.voronoi);
+                        document.getElementById('btn-voronoi').classList.remove('active');
+                    }
+                });
+            });
+            
+            // Tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    // TODO: implement tab content switching
+                });
+            });
+            
+            // Close modals on overlay click
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.add('hidden');
+                    }
+                });
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // INIT
+        // ═══════════════════════════════════════════════════════════════════
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            setupEventListeners();
+            renderWorkshops();
+        });
+
+    })();
+    </script>
+</body>
+</html>
